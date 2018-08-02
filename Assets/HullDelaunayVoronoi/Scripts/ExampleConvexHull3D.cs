@@ -1,14 +1,19 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections;
+using UnityEngine;
 using System.Collections.Generic;
-
+using System.Linq;
 using HullDelaunayVoronoi.Hull;
 using HullDelaunayVoronoi.Primitives;
+using Random = UnityEngine.Random;
 
 namespace HullDelaunayVoronoi
 {
 
     public class ExampleConvexHull3D : MonoBehaviour
     {
+
+        [SerializeField] private GameObject DrawMesh;
 
         public int NumberOfVertices = 1000;
 
@@ -51,17 +56,72 @@ namespace HullDelaunayVoronoi
 
             mesh.vertices = meshVerts;
             mesh.SetIndices(meshIndices, MeshTopology.Points, 0);
+            
 
             hull = new ConvexHull3();
             hull.Generate(vertices);
 
+            Mesh ms = new Mesh
+            {
+                vertices = VertexToVector(hull.Vertices).ToArray(),
+                triangles = SimplexToTriangle(hull).ToArray()
+            };
+
+            ms.name = "ConvexHull";
+            ms.RecalculateNormals();
+            ms.RecalculateBounds();
+
+            DrawMesh.GetComponent<MeshFilter>().mesh = ms;
+        }
+
+        List<Vector3> VertexToVector(IList<Vertex3> v)
+        {
+            List<Vector3> vs=new List<Vector3>();
+            foreach (var vertex3 in v)
+            {
+                vs.Add(new Vector3(vertex3.X,vertex3.Y,vertex3.Z));
+            }
+
+            return vs;
+        }
+
+        List<int> SimplexToTriangle(ConvexHull3 hull)
+        {
+            
+
+            var vertexs = hull.Vertices;
+            var simplexs = hull.Simplexs;
+
+            List<int> tri=new List<int>();
+
+            foreach (var f in simplexs)
+            {
+                int v0 = Array.IndexOf(vertexs.ToArray(), f.Vertices[0]);
+                int v1 = Array.IndexOf(vertexs.ToArray(), f.Vertices[1]);
+                int v2 = Array.IndexOf(vertexs.ToArray(), f.Vertices[2]);
+
+                if (f.IsNormalFlipped)
+                {
+                    tri.Add(v0);
+                    tri.Add(v2);
+                    tri.Add(v1);
+                }
+                else
+                {
+                    tri.Add(v0);
+                    tri.Add(v1);
+                    tri.Add(v2);
+                }
+            }
+
+            return tri;
         }
 
         private void Update()
         {
-            if (Input.GetKey(KeyCode.KeypadPlus) || Input.GetKey(KeyCode.KeypadMinus))
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.D))
             {
-                theta += (Input.GetKey(KeyCode.KeypadPlus)) ? 0.005f : -0.005f;
+                theta += (Input.GetKey(KeyCode.A)) ? 0.005f : -0.005f;
 
                 rotation[0, 0] = Mathf.Cos(theta);
                 rotation[0, 2] = Mathf.Sin(theta);
